@@ -1,0 +1,16 @@
+NVCC = /c/PROGRA~1/NVIDIA~2/CUDA/v10.0/bin/nvcc.exe
+NVCC_FLAGS = -g -G -Xcompiler -Wall
+
+all: main.exe
+
+main.exe: main.o kernel.o
+	$(NVCC) $^ -o $@
+
+main.o: main.cpp kernel.h
+	$(NVCC) $(NVCC_FLAGS) -c $< -o $@
+
+kernel.o: kernel.cu kernel.h
+	$(NVCC) $(NVCC_FLAGS) -c $< -o $@
+
+clean:
+	rm -f *.o *.exe
