@@ -1,0 +1,10 @@
+## Created by Alex Getz
+
+NVCC = /c/PROGRA~1/NVIDIA~2/CUDA/v10.0/bin/nvcc.exe
+NVCC_FLAGS = -g -G -Xcompiler -Wall
+
+main.exe: bandwidthtest.cu
+	$(NVCC) $(NVCC_FLAGS) $^ -o $@
+
+clean:
+	rm -f *.o *.exe
