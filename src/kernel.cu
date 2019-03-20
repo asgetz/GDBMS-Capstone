@@ -43,7 +43,7 @@ int RanNumber(){
  * link: https://devblogs.nvidia.com/how-optimize-data-transfers-cuda-cc/
  */
 //////////////////////////////////////////////////////////////////////////////
-void profileCopies(int *h_a, int *h_b, int *d,
+void profileCopies(int *h_sample, int *h_b, int *d,
                    unsigned int num,
                    char *desc)
 {
@@ -58,7 +58,7 @@ void profileCopies(int *h_a, int *h_b, int *d,
   checkCuda( cudaEventCreate(&stopEvent) );
 
   checkCuda( cudaEventRecord(startEvent, 0) );
-  checkCuda( cudaMemcpy(d, h_a, bytes, cudaMemcpyHostToDevice) );
+  checkCuda( cudaMemcpy(d, h_sample, bytes, cudaMemcpyHostToDevice) );
   checkCuda( cudaEventRecord(stopEvent, 0) );
   checkCuda( cudaEventSynchronize(stopEvent) );
 
@@ -75,7 +75,7 @@ void profileCopies(int *h_a, int *h_b, int *d,
   printf("  Device to Host bandwidth (bytes/s): %f\n", bytes / time);
 
   for (int i = 0; i < num; ++i) {
-    if (h_a[i] != h_b[i]) {
+    if (h_sample[i] != h_b[i]) {
       printf("*** %s transfers failed ***\n", desc);
       break;
     }
@@ -115,15 +115,18 @@ int main(){
     unsigned int nElements = 100;
     const unsigned int bytes = nElements * sizeof(int);
     std::vector<int> pData;
-    int *BaseSample, *h_APinn, *d_Base, *h_BPage, *h_BPinn;
+    int *BaseSample,/* *h_APinn*/ *d_Base,/* *h_BPage*/ *h_BPinn;
     std::array<int,sn> sKey; //Keeps track of the indexs of sampled pData
     std::string sbuffer;
 
 
     // Allocate memory in GPU for the sample data
-    BaseSample = (int*)malloc(bytes); h_BPage = (int*)malloc(bytes);
-    checkCuda( cudaMallocHost((void**)&h_APinn, bytes) ); // host pinned
-    checkCuda( cudaMallocHost((void**)&h_BPinn, bytes) ); // host pinned
+    //BaseSample = (int*)malloc(bytes);
+    checkCuda( cudaMallocHost((int**)&BaseSample,bytes));
+    checkCuda( cudaMallocHost((int**)&h_BPinn,bytes));
+    //h_BPage = (int*)malloc(bytes);
+    //checkCuda( cudaMallocHost((void**)&h_APinn, bytes) ); // host pinned
+    //checkCuda( cudaMallocHost((void**)&h_BPinn, bytes) ); // host pinned
     checkCuda( cudaMalloc((void**)&d_Base, bytes) );
     //cudaMemcpy(d_Base,BaseSample,bytes,cudaMemcpyHostToDevice);
 
@@ -144,12 +147,12 @@ int main(){
         int count=0;
         do{
             temp=RanNumber();
-            std::cout<<"i = "<<i<<" :  "<<temp<<std::endl;
+            //std::cout<<"i = "<<i<<" :  "<<temp<<std::endl;
             ++count;
         }while(std::any_of(sKey.begin(),sKey.end(),[&](int x){return x==temp;}));
         sKey[i]=temp;
         BaseSample[i]=pData[temp];
-        std::cout<<"BaseSample element "<<i<<" :  "<<BaseSample[i]<<" with key of "<<sKey[i]<<std::endl;
+        //std::cout<<"BaseSample element "<<i<<" :  "<<BaseSample[i]<<" with key of "<<sKey[i]<<std::endl;
         if(count>1){
             printf("While loop pass count = ");
             std::cout<<count<<" on element i = "<<i<<std::endl;
@@ -158,32 +161,33 @@ int main(){
 
 
     // Officially set
-    printf("HERE 1\n");
-    memcpy(h_APinn,BaseSample,bytes);
-    printf("HERE 2\n");
-    memset(h_BPage,0,bytes);
-    printf("HERE 3\n");
-    memset(h_BPinn,0,bytes);
-    printf("HERE 4\n");
+    // printf("HERE 1\n");
+    // memcpy(h_APinn,BaseSample,bytes);
+    // printf("HERE 2\n");
+    // memset(h_BPage,0,bytes);
+    // printf("HERE 3\n");
+    // memset(h_BPinn,0,bytes);
+    // printf("HERE 4\n");
 
 
     // output device info and transfer size
-    cudaDeviceProp prop;
-    checkCuda( cudaGetDeviceProperties(&prop, 0) );
-    printf("\nDevice: %s\n", prop.name);
-    printf("Transfer size (Bytes): %d\n", bytes);
+    // cudaDeviceProp prop;
+    // checkCuda( cudaGetDeviceProperties(&prop, 0) );
+    // printf("\nDevice: %s\n", prop.name);
+    // printf("Transfer size (Bytes): %d\n", bytes);
 
     // perform copies and report bandwidth
-    profileCopies(BaseSample, h_BPage, d_Base, nElements, "Pageable");
-    profileCopies(h_APinn, h_BPinn, d_Base, nElements, "Pinned");
+    //profileCopies(BaseSample, h_BPinn, d_Base, nElements, "Pageable");
+    profileCopies(BaseSample, h_BPinn, d_Base, nElements, "Pinned");
     printf("n");
 
     // Finished operations and now returning data from device to host
     cudaFree(d_Base);
     cudaFreeHost(BaseSample);
     cudaFreeHost(h_BPinn);
-    free(h_APinn);
-    free(h_BPage);
+    // cudaFreeHost(h_BPage);
+    // free(h_APinn);
+    // free(h_BPage);
     return 0;
 }
 
