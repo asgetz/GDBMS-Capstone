@@ -41,3 +41,6 @@ Thumbs.db
 # Singled out files #
 #####################
 ./data/allCountries.txt
+./Docs/test-code/cooperative-groups/OptimizedReductionExample.txt
+./Docs/Misc-Code-Samples/SelectionSampling/CustomSelectionSampling.cu
+./Docs/Misc-Code-Samples/ParkMillerPRNG/sdk/projects/park-miller/*.txt
