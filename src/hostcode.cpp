@@ -4,45 +4,31 @@
 
 
 
-
+#include <fstream>
+#include <boost/iostreams/stream.hpp>
+#include <libs/iostreams/src/mapped_file.cpp>
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <KernelInterface.h>
-
 // #include <driver_types.h>
 // #include "device_launch_parameters.h"
 
+#include <algorithm>
+#include <iostream>
+#include <sstream>
+#include <cstring>
+#include <string>
+#include <vector>
+#include <random>
+#include <time.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <algorithm>
+#include <array>
+#include <assert.h>
 
-// #include "kernel.h"
-// #include <process.h>
-
-// #include <fstream>
-// #include <boost/iostreams/stream.hpp>
-// #include <libs/iostreams/src/mapped_file.cpp>
-// #include <sstream>
-// #include <cstring>
-// #include <string>
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <algorithm>
-// #include <array>
-
-// #ifdef __MINGW32__
-//
-// #if 0
-// extern "C" {
-// int __security_cookie;
-// }
-//
-// extern "C" void _fastcall __security_check_cookie(int i) {
-// //do nothing
-// }
-// #endif
-// extern "C" void _chkstk();
-// extern "C" void _allmul();
-// #endif //__MINGW32__
-
-// #define MAX_ENTRIES 11897027
+#define MAX_ENTRIES 11897027
 
 /**
  * [main description]
@@ -59,46 +45,49 @@ int main(){
      */
     //
 
-    // KernelInterface *obj;
+    KernelInterface *obj;
 
-    //
-    //////// Read in Population data and store it
-    // using boost::iostreams::mapped_file_source;
-    // using boost::iostreams::stream;
-    // mapped_file_source mmap("../data/allCountries.txt");
-    // stream<mapped_file_source> is(mmap, std::ios::binary);
-    //
+
+    ////// Read in Population data and store it
+    using boost::iostreams::mapped_file_source;
+    using boost::iostreams::stream;
+    mapped_file_source mmap("../data/allCountries.txt");
+    stream<mapped_file_source> is(mmap, std::ios::binary);
+
     // int *pData_h;
-    // std::string line;
-    //
-    // uintmax_t m_numLines = 0;
-    // while (std::getline(is, line))
-    // {
-    //     int counter=0;
-    //     std::stringstream ss;
-    //     std::string temp;
-    //     std::cout<<"\n"<<line<<"\n";
-    //     ss << line;
-    //     std::getline(ss,temp,'\t');
-    //     // std::cout<<temp<<", position: "<<++counter<<"\n";
-    //     while(std::getline(ss,temp,'\t')){
-    //         if(temp.length() == 4){
-    //
-    //             // Right now treat whole input stream as the sample
-    //             // Later will add ability to distinguish what size of sample you want.
-    //             // numEntries[i]=std::atoi(entries[i].c_str());
-    //             pData_h[m_numLines] = std::atoi(temp.c_str());
-    //
-    //
-    //
-    //             // std::cout<<temp<<", position: "<<++counter<<"\n";
-    //             break;
-    //         } else{ ++counter; }
-    //     }
-    //     m_numLines++;
-    //     // if(m_numLines==5){ break; }
-    // }
-    // std::cout << "m_numLines = " << m_numLines << "\n";
+    std::string line;
+
+    // pData_h = (int*)malloc(MAX_ENTRIES*sizeof(int));
+
+    uintmax_t m_numLines = 0;
+    while (std::getline(is, line))
+    {
+        int counter=0;
+        std::stringstream ss;
+        std::string temp;
+        // std::cout<<"\n"<<line<<"\n";
+        ss << line;
+        std::getline(ss,temp,'\t');
+        // std::cout<<temp<<", position: "<<++counter<<"\n";
+        while(std::getline(ss,temp,'\t')){
+            if(temp.length() == 4){
+
+                // Right now treat whole input stream as the sample
+                // Later will add ability to distinguish what size of sample you want.
+                // numEntries[i]=std::atoi(entries[i].c_str());
+                // pData_h[m_numLines] = std::atoi(temp.c_str());
+                obj->BaseSample[m_numLines] = std::atoi(temp.c_str());
+
+
+
+                // std::cout<<temp<<", position: "<<++counter<<"\n";
+                break;
+            } else{ ++counter; }
+        }
+        m_numLines++;
+        // if(m_numLines==5){ break; }
+    }
+    std::cout << "m_numLines = " << m_numLines << "\n";
 
     //////////////////// Copy to Device, launch, and copy back to host
     /* All of these steps have been offloaded onto the KernelInterface class */
@@ -114,6 +103,10 @@ int main(){
     //////////////////// Free veriables. Possibly invoke class deconstructor
 
     // printf("\n\n\nDONE\n\n\n");
+    // free(pData_h);
+    cudaFree(obj->d_Base);
+    cudaFree(obj->randArray);
+    cudaFreeHost(obj->BaseSample);
     return 0;
 }
 

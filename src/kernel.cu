@@ -25,22 +25,22 @@
 // #include <array>
 
 
-inline
-cudaError_t checkCuda(cudaError_t result)
-{
-#if defined(DEBUG) || defined(_DEBUG)
-    if(result!=cudaSuccess){
-        fprintf(stderr,"CUDA Runtime Error: %s\n",
-                cudaGetErrorString(result));
-        assert(result==cudaSuccess);
-    }
-#endif
-    return result;
-}
-
-#define CUDA_CALL(x) do { if((x) != cudaSuccess) { \
-    printf("Error at %s:%d\n",__FILE__,__LINE__); \
-    return EXIT_FAILURE;}} while(0)
+// inline
+// cudaError_t checkCuda(cudaError_t result)
+// {
+// #if defined(DEBUG) || defined(_DEBUG)
+//     if(result!=cudaSuccess){
+//         fprintf(stderr,"CUDA Runtime Error: %s\n",
+//                 cudaGetErrorString(result));
+//         assert(result==cudaSuccess);
+//     }
+// #endif
+//     return result;
+// }
+//
+// #define CUDA_CALL(x) do { if((x) != cudaSuccess) { \
+//     printf("Error at %s:%d\n",__FILE__,__LINE__); \
+//     return EXIT_FAILURE;}} while(0)
 
 
 #define MUL(a, b) a*b
@@ -121,7 +121,7 @@ __global__ void bootstrap(unsigned int *out, int *d_sample)
  * @param  cycles           [description]
  * @param  N                [description]
  */
-static __global__ void parkmillerKernel(int *d_Output, unsigned int seed, \
+static __global__ void parkmillerKernel(unsigned int seed, \
                                         int cycles, unsigned int N)
 {
     unsigned int      tid = MUL(blockDim.x, blockIdx.x) + threadIdx.x;
@@ -142,7 +142,7 @@ static __global__ void parkmillerKernel(int *d_Output, unsigned int seed, \
 
         //d_Output[MUL(threadIdx.y, N) + pos] = (float)(result + 1) * INT_SCALE;
         //d_Output[MUL(threadIdx.y, N) + pos] = result;
-        d_Output[pos] = result;
+        // randArray[pos] = result;
     }
 }
 

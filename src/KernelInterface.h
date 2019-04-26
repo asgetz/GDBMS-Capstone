@@ -21,9 +21,7 @@
 class KernelInterface
 {
 public:
-    int n[20];
-    int y;
-    int asize;
+    int *BaseSample, *d_Base, *randArray;
 
     KernelInterface();
 
