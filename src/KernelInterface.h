@@ -18,29 +18,23 @@
 //                    unsigned int N);
 
 
+
+
 class KernelInterface
 {
 public:
-    int *BaseSample, *d_Base, *randArray;
+    int *randArray, *d_Base;
+    unsigned int bigsize;
 
-    KernelInterface();
+    float ratio;
+    int Ssize;
+    int PopSize;
+    int bStraps;
 
-    __device__ void addKernelGPU(unsigned int blocknum, \
-                                          unsigned int threadnum, \
-                                          int *c, const int *a, \
-                                          const int *b);
+    KernelInterface(float r, int sSize, int pSize, int bsnum);
 
-    __device__ void bootstrapGPU(unsigned int blocknum, \
-                                          unsigned int threadnum, \
-                                          unsigned int *output, \
-                                          int *sampleInput);
-
-    __device__ void parkmillerGPU(int *d_Output, \
-                                           unsigned int seed, \
-                                           int cycles, \
-                                           unsigned int grid_size, \
-                                           unsigned int block_size, \
-                                           unsigned int N);
+    void parkmillercall(unsigned int threads, unsigned int blocks);
+    // void bootstrapcall();
 };
 
 
@@ -76,6 +70,12 @@ public:
 // #endif
 
 
+////// Allocate memory in GPU for the sample data
+// checkCuda( cudaMallocHost((void**)&BaseSample,MAX_ENTRIES*sizeof(int)));
+// cudaMalloc((void**)&d_Base,MAX_ENTRIES*sizeof(int));
+// cudaMalloc((void**)&randArray,MAX_ENTRIES*sizeof(int));
+// checkCuda( cudaMallocHost((void**)&h_mean,313*128*sizeof(int)));
+// checkCuda( cudaMalloc((void**)&d_mean,313*128*sizeof(int)));
 
 
 // /**

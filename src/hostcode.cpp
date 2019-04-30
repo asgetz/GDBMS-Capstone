@@ -28,6 +28,23 @@
 #include <array>
 #include <assert.h>
 
+inline
+cudaError_t checkCuda(cudaError_t result)
+{
+#if defined(DEBUG) || defined(_DEBUG)
+    if(result!=cudaSuccess){
+        fprintf(stderr,"CUDA Runtime Error: %s\n",
+                cudaGetErrorString(result));
+        assert(result==cudaSuccess);
+    }
+#endif
+    return result;
+}
+
+#define CUDA_CALL(x) do { if((x) != cudaSuccess) { \
+    printf("Error at %s:%d\n",__FILE__,__LINE__); \
+    return EXIT_FAILURE;}} while(0)
+
 #define MAX_ENTRIES 11897027
 
 /**
@@ -45,9 +62,8 @@ int main(){
      */
     //
 
-    KernelInterface *obj;
-
-
+    int *BaseSample, *randArray, *d_Base;
+    checkCuda( cudaMallocHost((void**)&BaseSample,MAX_ENTRIES*sizeof(int)));
     ////// Read in Population data and store it
     using boost::iostreams::mapped_file_source;
     using boost::iostreams::stream;
@@ -76,7 +92,9 @@ int main(){
                 // Later will add ability to distinguish what size of sample you want.
                 // numEntries[i]=std::atoi(entries[i].c_str());
                 // pData_h[m_numLines] = std::atoi(temp.c_str());
-                obj->BaseSample[m_numLines] = std::atoi(temp.c_str());
+
+                // obj->BaseSample[m_numLines] = std::atoi(temp.c_str());
+                BaseSample[m_numLines] = std::atoi(temp.c_str());
 
 
 
@@ -89,6 +107,28 @@ int main(){
     }
     std::cout << "m_numLines = " << m_numLines << "\n";
 
+
+    ///////////////////////////////////////////////////////////////////////////
+
+    float chosen = 0.10; //
+    unsigned int blocksize = 128;
+    unsigned int gridsize = 8192;
+    int sample_n = 1048576;
+    int N_offset = 10485760;
+    int bootstrap_cycles = 2000;
+
+    KernelInterface obj(chosen,sample_n,N_offset,bootstrap_cycles);
+
+    obj.parkmillercall(blocksize,gridsize);
+
+
+
+
+
+
+
+
+
     //////////////////// Copy to Device, launch, and copy back to host
     /* All of these steps have been offloaded onto the KernelInterface class */
 
@@ -98,15 +138,13 @@ int main(){
      */
     //
 
-
-
     //////////////////// Free veriables. Possibly invoke class deconstructor
 
     // printf("\n\n\nDONE\n\n\n");
     // free(pData_h);
-    cudaFree(obj->d_Base);
-    cudaFree(obj->randArray);
-    cudaFreeHost(obj->BaseSample);
+    // cudaFree(obj->d_Base);
+    // cudaFree(obj->randArray);
+    cudaFreeHost(BaseSample);
     return 0;
 }
 

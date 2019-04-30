@@ -23,13 +23,11 @@ clean:
 
 # $ nvcc -x cu --gpu-architecture=sm_60 -I. --device-c KernelInterface.cpp
 # $ nvcc --gpu-architecture=sm_60 --device-link KernelInterface.obj --output-file link1.o
-# $ g++ -g -std=c++11 -I. -I"C:\PROGRA~1\NVIDIA~2\CUDA\v10.0\include" -c hostcode.cpp -o hostcode.o
+# $ g++ -g -std=c++11 -I. -I"D:\Boost\boost_1_69_0" -I"C:\PROGRA~1\NVIDIA~2\CUDA\v10.0\include" -c hostcode.cpp -o hostcode.o
 # $ g++ -g -std=c++11 -I. -I"C:\PROGRA~1\NVIDIA~2\CUDA\v10.0\include" -c KernelInterface.cpp -o KernelInterface.o
 # $ nvcc -g -G -I. -c kernel.cu -o kernel.o
 # $ nvcc --lib --output-file libgpu.a kernel.o link1.o
-# $ g++ -g -o main.exe hostcode.o KernelInterface.o \
-# > -L"D:\git\GDBMS-Capstone2\GDBMS-Capstone\src" -L"C:\PROGRA~1\NVIDIA~2\CUDA\v10.0\lib\x64" \
-# > -lgpu -lcudart
+# $ g++ -g -o main.exe hostcode.o KernelInterface.o -L"D:\git\GDBMS-Capstone2\GDBMS-Capstone\src" -L"C:\PROGRA~1\NVIDIA~2\CUDA\v10.0\lib\x64" -L"D:\Boost\boost_1_69_0\stage\lib" -lgpu -lcudart -lboost_filesystem-mgw73-mt-d-x64-1_69 -lboost_iostreams-mgw73-mt-d-x64-1_69 -lboost_system-mgw73-mt-d-x64-1_69
 
 
 
@@ -185,11 +183,11 @@ clean:
 # 		-L"D:\Boost\boost_1_69_0\stage\lib"
 # 		# -L"C:\ProgramData\NVIDIA~1\CUDASA~1\v10.0\common\lib\x64"
 # 		# C:\PROGRA~1\NVIDIA~2\CUDA\v10.0\lib\x64
-nvcc --gpu-architecture=sm_50 --device-c a.cu b.cu
-nvcc --gpu-architecture=sm_50 --device-link a.o b.o --output-file link.o
-nvcc --lib --output-file libgpu.a a.o b.o link.o
-g++ host.o --library=gpu --library-path=<path> \
-    --library=cudadevrt --library=cudart
+# nvcc --gpu-architecture=sm_50 --device-c a.cu b.cu
+# nvcc --gpu-architecture=sm_50 --device-link a.o b.o --output-file link.o
+# nvcc --lib --output-file libgpu.a a.o b.o link.o
+# g++ host.o --library=gpu --library-path=<path> \
+#     --library=cudadevrt --library=cudart
 # -L"D:\git\GDBMS-Capstone2\GDBMS-Capstone\src"
 #
 # # Compile flags
