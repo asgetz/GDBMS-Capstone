@@ -57,25 +57,25 @@ __global__ void initCurand(curandState *state, unsigned long seed){
     curand_init(seed, idx, 0, &state[idx]);
 }
 
-__global__ void bootstrap(int *output_mean, unsigned long int *d_sample, curandState *state)
+__global__ void bootstrap(int *output_mean, int *d_sample, curandState *state)
 {
     /*  */
     unsigned int idx = threadIdx.x + (blockIdx.x*blockDim.x);
     unsigned long int ts;
-    int temp = 0;
+    long long int sum = 0;
     for(int i=0;i<MAX_ENTRIES;++i){
         ts = getnextrandscaled(&state[idx], MAX_ENTRIES);
-        temp += d_sample[ts];
+        sum += d_sample[ts];
     }
-    output_mean[idx] = temp;
+    output_mean[idx] = (sum/MAX_ENTRIES);
 }
 
 int main(){
 
-    unsigned long int *BaseSample, *d_Base;
+    int *BaseSample, *d_Base;
     int *d_mean, *h_mean;
     curandState *devStates;
-    checkCuda( cudaMallocHost((void**)&BaseSample,MAX_ENTRIES*sizeof(unsigned long int)));
+    checkCuda( cudaMallocHost((void**)&BaseSample,MAX_ENTRIES*sizeof(int)));
     CUDA_CALL(cudaMalloc((void**)&devStates,2000*sizeof(curandState)));
 
     // int *pData_h;
@@ -115,18 +115,24 @@ int main(){
     std::cout << "m_numLines = " << m_numLines << "\nMoving on...\n\n";
     fs.close();
 
+    //std::cout << "Element 300,000 of BaseSample: " << BaseSample[300000]<<std::endl;
+
 
     ///////////////////////////////////////////////////////////////////////////
-    checkCuda( cudaMalloc((void**)&d_Base,MAX_ENTRIES*sizeof(unsigned long int)));
-    checkCuda( cudaMemcpy(d_Base,BaseSample,MAX_ENTRIES*sizeof(unsigned long int),cudaMemcpyHostToDevice));
+    checkCuda( cudaMalloc((void**)&d_Base,MAX_ENTRIES*sizeof(int)));
+    checkCuda( cudaMemcpy(d_Base,BaseSample,MAX_ENTRIES*sizeof(int),cudaMemcpyHostToDevice));
     cudaFreeHost(BaseSample);
+
     checkCuda( cudaMalloc((void**)&d_mean,2000*sizeof(int)));
     checkCuda( cudaMallocHost((void**)&h_mean,2000*sizeof(int)));
     // 2048 bootstraps of 128 threads each
+
+    //////////////////////////////////////
     initCurand<<<(2000+128-1)/128,128>>>(devStates, 1234);
     cudaDeviceSynchronize();
     bootstrap<<<(2000+128-1)/128,128>>>(d_mean, d_Base, devStates);
     cudaDeviceSynchronize();
+
     checkCuda( cudaMemcpy(h_mean,d_mean,2000*sizeof(int),cudaMemcpyDeviceToHost));
     for(int i=0;i<2000;++i){
         std::cout<<"element "<<i<<" : "<<h_mean[i]<<std::endl;
