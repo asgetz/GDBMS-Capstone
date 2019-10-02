@@ -1,23 +1,57 @@
-########################### Phase 2 Attempt 3
-NVCC = /c/PROGRA~1/NVIDIA~2/CUDA/v10.0/bin/nvcc.exe
+#################################################################
 
-SRC = hostcode.cpp KernelInterface.cpp
+compile:
+	nvcc -g -G --gpu-architecture=sm_35 -c kernel.cu -o kernel.o
+	nvcc -std=c++11 -L/usr/local/cuda/include -L/usr/local/cuda/lib64 -lcudart -lcurand -o main kernel.o -Xcompiler -static-libgcc -Xcompiler -static-libstdc++
+#################################################################
 
-# All device code
-OBJS_1 = kernel.o KernelInterface.o
 
-# All non-device code
-OBJS_2 = hostcode.o KernelInterface.o
 
-DeviceCODE: $(OBJS_1)
-	$(NVCC) -arch=sm_60 $(OBJS_1) -o DeviceCODE
 
-$(OBJS_1): $(SRC)
-	$(NVCC) -x cu -arch=sm_60 -I. -dc $< -o $@
+# ###############################################################
+# #####################                   Most Up-To-Date Attempt
+# ##################### Geared towards the SARAH3 CentOS-7 System
+# kernel.o:
+#	@nvcc -g -G --gpu-architecture=sm_35 -c kernel.cu -o kernel.o &&
+#	@nvcc -std=c++11 -L/usr/local/cuda/include -L/usr/local/cuda/lib64 \
+#		-lcudart -lcurand -o main kernel.o -Xcompiler -static-libgcc \
+#		-Xcompiler -static-libstdc++
+#
+#	echo "First time compilation successful"
+#
+# recompile: kernel.o
+#	@nvcc -g -G --gpu-architecture=sm_35 -c kernel.cu -o kernel.o &&
+#	@nvcc -std=c++11 -L/usr/local/cuda/include -L/usr/local/cuda/lib64 \
+#		-lcudart -lcurand -o main kernel.o -Xcompiler -static-libgcc \
+#		-Xcompiler -static-libstdc++
+#
+#	echo "Recompilation successful"
+# ###############################################################
 
-clean:
-	rm -f *.o DeviceCODE
 
+
+
+
+# ########################### Phase 2 Attempt 3
+# NVCC = /c/PROGRA~1/NVIDIA~2/CUDA/v10.0/bin/nvcc.exe
+#
+# SRC = hostcode.cpp KernelInterface.cpp
+#
+# # All device code
+# OBJS_1 = kernel.o KernelInterface.o
+#
+# # All non-device code
+# OBJS_2 = hostcode.o KernelInterface.o
+#
+# DeviceCODE: $(OBJS_1)
+# 	$(NVCC) -arch=sm_60 $(OBJS_1) -o DeviceCODE
+#
+# $(OBJS_1): $(SRC)
+#	$(NVCC) -x cu -arch=sm_60 -I. -dc $< -o $@
+#
+# clean:
+#	rm -f *.o DeviceCODE
+######################################################
 
 
 

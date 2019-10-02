@@ -40,7 +40,15 @@ cudaError_t checkCuda(cudaError_t result)
 
 #define CUDA_CALL(x) do { if((x) != cudaSuccess) { \
     printf("Error at %s:%d\n",__FILE__,__LINE__); \
-    return EXIT_FAILURE;}} while(0)
+    return EXIT_FAILURE;}} /*while(0)*/
+
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__);}
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true){
+	if (code != cudaSuccess){
+		fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+		if(abort) exit(code);
+	}
+}
 
 
 /* ///   DEVICE FUNCTIONS   /// */
@@ -76,7 +84,7 @@ int main(){
     int *d_mean, *h_mean;
     curandState *devStates;
     checkCuda( cudaMallocHost((void**)&BaseSample,MAX_ENTRIES*sizeof(int)));
-    CUDA_CALL(cudaMalloc((void**)&devStates,2000*sizeof(curandState)));
+    checkCuda( cudaMalloc((void**)&devStates,2048*sizeof(curandState)));
 
     // int *pData_h;
     std::string line;
@@ -115,35 +123,46 @@ int main(){
     std::cout << "m_numLines = " << m_numLines << "\nMoving on...\n\n";
     fs.close();
 
-    //std::cout << "Element 300,000 of BaseSample: " << BaseSample[300000]<<std::endl;
+    std::cout << "Element 300,000 of BaseSample: " << BaseSample[300000]<<std::endl;
 
 
     ///////////////////////////////////////////////////////////////////////////
     checkCuda( cudaMalloc((void**)&d_Base,MAX_ENTRIES*sizeof(int)));
     checkCuda( cudaMemcpy(d_Base,BaseSample,MAX_ENTRIES*sizeof(int),cudaMemcpyHostToDevice));
-    cudaFreeHost(BaseSample);
+    //checkCuda( cudaFreeHost(BaseSample) );
 
-    checkCuda( cudaMalloc((void**)&d_mean,2000*sizeof(int)));
-    checkCuda( cudaMallocHost((void**)&h_mean,2000*sizeof(int)));
+    checkCuda( cudaMalloc((void**)&d_mean,2048*sizeof(int)));
+    checkCuda( cudaMallocHost((void**)&h_mean,2048*sizeof(int)));
     // 2048 bootstraps of 128 threads each
 
-    //////////////////////////////////////
-    initCurand<<<(2000+128-1)/128,128>>>(devStates, 1234);
-    cudaDeviceSynchronize();
-    bootstrap<<<(2000+128-1)/128,128>>>(d_mean, d_Base, devStates);
-    cudaDeviceSynchronize();
+    std::cout<<"Launching initCurand Kernel now\n\n";
 
-    checkCuda( cudaMemcpy(h_mean,d_mean,2000*sizeof(int),cudaMemcpyDeviceToHost));
-    for(int i=0;i<2000;++i){
+    //////////////////////////////////////
+    initCurand<<<16,128>>>(devStates, 1234);
+    gpuErrchk( cudaPeekAtLastError() );
+    gpuErrchk( cudaDeviceSynchronize() );
+
+    std::cout<<"Launching bootstrap Kernel now\n\n";
+
+    bootstrap<<<16,128>>>(d_mean, d_Base, devStates);
+    std::cout<<"Bootstrap Kernel launched; checking for errors & synching threads\n";
+    checkCuda( cudaPeekAtLastError() );
+    checkCuda( cudaDeviceSynchronize() );
+    std::cout<<"Bootstrap Kernel threads should be synched\n";
+
+    std::cout<<"Kernels appear complete, attempting to copy data back to Host\n";
+    checkCuda( cudaMemcpy(h_mean,d_mean,2048*sizeof(int),cudaMemcpyDeviceToHost) );
+
+    for(int i=0;i<2048;++i){
         std::cout<<"element "<<i<<" : "<<h_mean[i]<<std::endl;
     }
 
-    cudaFree(d_Base);
-    cudaFree(d_mean);
-
-    printf("\n\n\nDONE\n\n\n");
-    cudaFree(devStates);
-    cudaFreeHost(h_mean);
+    checkCuda( cudaFree(d_Base) );
+    checkCuda( cudaFree(d_mean) );
+    checkCuda( cudaFree(devStates) );
+    checkCuda( cudaFreeHost(BaseSample) );
+    checkCuda( cudaFreeHost(h_mean) );
+    printf("\n\nDONE\n\n\n");
 
 
     return 0;
