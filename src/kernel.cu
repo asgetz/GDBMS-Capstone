@@ -1,6 +1,10 @@
 // kernel.cu
 // Alex Getz
 
+#include <cstddef>
+#include <stdexcept>
+#include <memory>
+
 #include <fstream>
 #include <cuda.h>
 #include <curand.h>
@@ -14,12 +18,11 @@
 #include <sstream>
 #include <cstring>
 #include <string>
-#include <vector>
-#include <time.h>
+//#include <vector>
+//#include <time.h>
 #include <math.h>
 #include <algorithm>
 #include <array>
-#include <assert.h>
 
 #define MAX_ENTRIES 11897026
 #define B_SIZE 2000
@@ -62,29 +65,68 @@ __device__ int getnextrandscaled(curandState *state, unsigned long int scale){
 
 __global__ void initCurand(curandState *state, unsigned long seed){
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    curand_init(seed, idx, 0, &state[idx]);
+    curand_init(idx+seed, 0, 0, &state[idx]);
 }
 
 __global__ void bootstrap(int *output_mean, int *d_sample, curandState *state)
 {
-    /*  */
+    unsigned int tidx = threadIdx.x + (blockIdx.x*blockDim.x);
+    unsigned int tNum = threadIdx.x;
+    unsigned int bSize = blockDim.x;
+    unsigned int bid = blockIdx.x;
+    unsigned long int sum = 0;
+
+    for(unsigned int i=tNum; i<MAX_ENTRIES; i+=bSize){
+	    /* */
+    }
+    
+    
+	
+	
+    /*
     unsigned int idx = threadIdx.x + (blockIdx.x*blockDim.x);
     unsigned long int ts;
     long long int sum = 0;
-    for(int i=0;i<MAX_ENTRIES;++i){
+    for(int i=0;i<(MAX_ENTRIES/100);++i){
         ts = getnextrandscaled(&state[idx], MAX_ENTRIES);
         sum += d_sample[ts];
     }
-    output_mean[idx] = (sum/MAX_ENTRIES);
+    output_mean[idx] = (sum/(MAX_ENTRIES/100));
+    */
+    
 }
+
+
+
+void throw_error(cudaError_t err){
+    if(err != cudaSuccess)
+	throw std::runtime_error(cudaGetErrorString(err));
+}
+
+struct cuda_free_deleter_t{
+    void operator()(void* ptr) const
+    {
+	cudaFree(ptr);
+    }
+};
+
+
+template <typename T>
+auto cudaAllocBuffer(std::size_t size){
+    void *ptr;
+    throw_error(cudaMalloc(&ptr, size*sizeof(T)));
+    return std::unique_ptr<T, cuda_free_deleter_t> { static_cast<T*>(ptr) };
+}
+
+
 
 int main(){
 
     int *BaseSample, *d_Base;
     int *d_mean, *h_mean;
-    curandState *devStates;
+    //curandState *devStates;
     checkCuda( cudaMallocHost((void**)&BaseSample,MAX_ENTRIES*sizeof(int)));
-    checkCuda( cudaMalloc((void**)&devStates,2048*sizeof(curandState)));
+    //checkCuda( cudaMalloc((void**)&devStates,2048*1024*sizeof(curandState)));
 
     // int *pData_h;
     std::string line;
@@ -123,43 +165,69 @@ int main(){
     std::cout << "m_numLines = " << m_numLines << "\nMoving on...\n\n";
     fs.close();
 
-    std::cout << "Element 300,000 of BaseSample: " << BaseSample[300000]<<std::endl;
+    //std::cout << "Element 300,000 of BaseSample: " << BaseSample[300000]<<std::endl;
 
 
     ///////////////////////////////////////////////////////////////////////////
     checkCuda( cudaMalloc((void**)&d_Base,MAX_ENTRIES*sizeof(int)));
     checkCuda( cudaMemcpy(d_Base,BaseSample,MAX_ENTRIES*sizeof(int),cudaMemcpyHostToDevice));
-    //checkCuda( cudaFreeHost(BaseSample) );
+    checkCuda( cudaFreeHost(BaseSample) );
 
     checkCuda( cudaMalloc((void**)&d_mean,2048*sizeof(int)));
     checkCuda( cudaMallocHost((void**)&h_mean,2048*sizeof(int)));
-    // 2048 bootstraps of 128 threads each
 
     std::cout<<"Launching initCurand Kernel now\n\n";
 
     //////////////////////////////////////
-    initCurand<<<16,128>>>(devStates, 1234);
-    gpuErrchk( cudaPeekAtLastError() );
-    gpuErrchk( cudaDeviceSynchronize() );
+    try{
+	constexpr int block_size = 512;
+	constexpr int num_blocks = 4096;
+	auto devStates = cudaAllocBuffer<curandState>(num_blocks * block_size);
+	initCurand<<<num_blocks, block_size>>>(devStates.get(),1234);
+	throw_error(cudaPeekAtLastError());
+	throw_error(cudaDeviceSynchronize());
+	std::cout<<"Curand Kernel Launch Try block SUCCESSFUL!\n";
+	std::cout<<"Launching Bootstrap Kernel now\n\n";
+	bootstrap<<<2048,1024>>>(d_mean,d_Base,devStates.get());
+	throw_error(cudaPeekAtLastError());
+	throw_error(cudaDeviceSynchronize());
+	std::cout<<"Bootstrap Kernel Launch Try Block SUCCESSFUL!\n";
+    }
+    catch (const std::exception& e)
+    {
+	std::cerr << "Error: " << e.what() << '\n';
+	return -1;
+    }
+    catch (...)
+    {
+	std::cerr << "Unknown Exception";
+	return -1;
+    }
 
-    std::cout<<"Launching bootstrap Kernel now\n\n";
+    //initCurand<<<2048,1024>>>(devStates, 1234);
+    //gpuErrchk( cudaPeekAtLastError() );
+    //gpuErrchk( cudaDeviceSynchronize() );
 
-    bootstrap<<<16,128>>>(d_mean, d_Base, devStates);
-    std::cout<<"Bootstrap Kernel launched; checking for errors & synching threads\n";
-    checkCuda( cudaPeekAtLastError() );
-    checkCuda( cudaDeviceSynchronize() );
-    std::cout<<"Bootstrap Kernel threads should be synched\n";
+    //std::cout<<"Launching bootstrap Kernel now\n\n";
 
-    std::cout<<"Kernels appear complete, attempting to copy data back to Host\n";
-    checkCuda( cudaMemcpy(h_mean,d_mean,2048*sizeof(int),cudaMemcpyDeviceToHost) );
+    //bootstrap<<<2048,1024>>>(d_mean, d_Base, devStates);
+    //std::cout<<"Bootstrap Kernel launched; checking for errors & synching threads\n";
+    //checkCuda( cudaPeekAtLastError() );
+    //checkCuda( cudaDeviceSynchronize() );
+    //std::cout<<"Bootstrap Kernel threads should be synched\n";
 
+    //std::cout<<"Kernels appear complete, attempting to copy data back to Host\n";
+    //checkCuda( cudaMemcpy(h_mean,d_mean,2048*sizeof(int),cudaMemcpyDeviceToHost) );
+
+    /*
     for(int i=0;i<2048;++i){
         std::cout<<"element "<<i<<" : "<<h_mean[i]<<std::endl;
     }
+    */
 
     checkCuda( cudaFree(d_Base) );
     checkCuda( cudaFree(d_mean) );
-    checkCuda( cudaFree(devStates) );
+    //checkCuda( cudaFree(devStates) );
     checkCuda( cudaFreeHost(BaseSample) );
     checkCuda( cudaFreeHost(h_mean) );
     printf("\n\nDONE\n\n\n");
