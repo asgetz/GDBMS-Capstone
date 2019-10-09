@@ -70,15 +70,22 @@ __global__ void initCurand(curandState *state, unsigned long seed){
 
 __global__ void bootstrap(int *output_mean, int *d_sample, curandState *state)
 {
-    unsigned int tidx = threadIdx.x + (blockIdx.x*blockDim.x);
+    unsigned int idx = threadIdx.x + (blockIdx.x*blockDim.x);
     unsigned int tNum = threadIdx.x;
     unsigned int bSize = blockDim.x;
-    unsigned int bid = blockIdx.x;
-    unsigned long int sum = 0;
+    unsigned long int ts = 0;
+    long long int tSum = 0;
+    __shared__ int partial_Sums[1024];
+    int count = 0;
 
     for(unsigned int i=tNum; i<MAX_ENTRIES; i+=bSize){
-	    /* */
+	ts = getnextrandscaled(&state[idx], MAX_ENTRIES);
+	tSum += d_sample[ts];
+	count++;
     }
+
+    partial_Sums[tNum] = tSum/count;
+    __syncthreads();
     
     
 	
@@ -162,7 +169,7 @@ int main(){
             // if(m_numLines==5){ break; }
         }
     }
-    std::cout << "m_numLines = " << m_numLines << "\nMoving on...\n\n";
+    //std::cout << "m_numLines = " << m_numLines << "\nMoving on...\n\n";
     fs.close();
 
     //std::cout << "Element 300,000 of BaseSample: " << BaseSample[300000]<<std::endl;
@@ -176,7 +183,7 @@ int main(){
     checkCuda( cudaMalloc((void**)&d_mean,2048*sizeof(int)));
     checkCuda( cudaMallocHost((void**)&h_mean,2048*sizeof(int)));
 
-    std::cout<<"Launching initCurand Kernel now\n\n";
+    //std::cout<<"Launching initCurand Kernel now\n\n";
 
     //////////////////////////////////////
     try{
@@ -186,12 +193,12 @@ int main(){
 	initCurand<<<num_blocks, block_size>>>(devStates.get(),1234);
 	throw_error(cudaPeekAtLastError());
 	throw_error(cudaDeviceSynchronize());
-	std::cout<<"Curand Kernel Launch Try block SUCCESSFUL!\n";
-	std::cout<<"Launching Bootstrap Kernel now\n\n";
+	//std::cout<<"Curand Kernel Launch Try block SUCCESSFUL!\n";
+	//std::cout<<"Launching Bootstrap Kernel now\n\n";
 	bootstrap<<<2048,1024>>>(d_mean,d_Base,devStates.get());
 	throw_error(cudaPeekAtLastError());
 	throw_error(cudaDeviceSynchronize());
-	std::cout<<"Bootstrap Kernel Launch Try Block SUCCESSFUL!\n";
+	//std::cout<<"Bootstrap Kernel Launch Try Block SUCCESSFUL!\n";
     }
     catch (const std::exception& e)
     {
@@ -230,7 +237,7 @@ int main(){
     //checkCuda( cudaFree(devStates) );
     checkCuda( cudaFreeHost(BaseSample) );
     checkCuda( cudaFreeHost(h_mean) );
-    printf("\n\nDONE\n\n\n");
+    printf("DONE");
 
 
     return 0;
