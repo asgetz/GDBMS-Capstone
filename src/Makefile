@@ -1,7 +1,7 @@
 #################################################################
 
 compile:
-	nvcc -Xptxas -v -g -G --gpu-architecture=sm_35 -c kernel.cu -o kernel.o
+	nvcc -v -g -G --gpu-architecture=sm_35 -c kernel.cu -o kernel.o
 	nvcc -v -std=c++11 -L/usr/local/cuda/include -L/usr/local/cuda/lib64 -lcudart -lcurand -o main kernel.o -Xcompiler -static-libgcc -Xcompiler -static-libstdc++
 #################################################################
 
